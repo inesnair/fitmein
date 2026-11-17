@@ -102,7 +102,7 @@ def generate_cv(offer_id: str, user: CurrentUser = Depends(get_current_user)) ->
     name = cv_service.file_name(clean.full_name, o["company"], o["title"])
 
     path = f"{user.id}/{offer_id}/{datetime.now(timezone.utc):%Y%m%d%H%M%S}_{name}"
-    bucket = user.db.storage.from_("documents")
+    bucket = user.storage.from_("documents")
     bucket.upload(path, content, {"content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"})
     signed = bucket.create_signed_url(path, 3600)
 

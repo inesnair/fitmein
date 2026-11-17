@@ -9,7 +9,6 @@ class Settings(BaseSettings):
     # Supabase
     supabase_url: str
     supabase_anon_key: str
-    supabase_jwt_secret: str
 
     # Anthropic
     anthropic_api_key: str
