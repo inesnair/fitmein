@@ -1,0 +1,10 @@
+{
+  "name": "FitMeIn",
+  "short_name": "FitMeIn",
+  "description": "Vérifie si une offre est faite pour toi, génère ton CV ATS et suis tes candidatures.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0910",
+  "theme_color": "#0B0910",
+  "lang": "fr"
+}

@@ -1,0 +1,438 @@
+{
+ "levels": [
+  "Notions",
+  "Intermédiaire",
+  "Avancé",
+  "Expert"
+ ],
+ "domains": [
+  {
+   "id": "it",
+   "name": "Informatique / IT / Digital",
+   "skills": [
+    "Java",
+    "Spring Boot",
+    "JavaScript",
+    "TypeScript",
+    "Angular",
+    "React",
+    "Vue.js",
+    "Node.js",
+    "Python",
+    "SQL",
+    "PostgreSQL",
+    "MongoDB",
+    "Git",
+    "CI/CD",
+    "Docker",
+    "Kubernetes",
+    "AWS",
+    "Azure",
+    "API REST",
+    "Tests unitaires",
+    "Linux",
+    "Cybersécurité"
+   ]
+  },
+  {
+   "id": "produit",
+   "name": "Produit / Gestion de projet",
+   "skills": [
+    "Animation d'ateliers",
+    "Cadrage du besoin",
+    "Recueil des besoins",
+    "Priorisation (MoSCoW, WSJF)",
+    "Gestion du backlog",
+    "Rédaction de user stories",
+    "Critères d'acceptance",
+    "Plans de test / recette",
+    "Roadmap produit",
+    "Scrum",
+    "Kanban",
+    "SAFe",
+    "Jira",
+    "Confluence",
+    "Story mapping",
+    "Définition des KPIs",
+    "Gestion des parties prenantes",
+    "Démo / sprint review"
+   ]
+  },
+  {
+   "id": "data",
+   "name": "Data / IA",
+   "skills": [
+    "Python",
+    "Pandas",
+    "SQL",
+    "Power BI",
+    "Tableau",
+    "Machine learning",
+    "Deep learning",
+    "NLP",
+    "LLM / IA générative",
+    "RAG",
+    "MLOps",
+    "Statistiques",
+    "Data visualisation",
+    "Spark"
+   ]
+  },
+  {
+   "id": "mgmt",
+   "name": "Management / Direction",
+   "skills": [
+    "Management d'équipe",
+    "Recrutement",
+    "Entretiens annuels",
+    "Conduite du changement",
+    "Pilotage budgétaire",
+    "Stratégie",
+    "Gestion de conflits",
+    "Reporting",
+    "Délégation",
+    "Leadership"
+   ]
+  },
+  {
+   "id": "com",
+   "name": "Commerce / Vente",
+   "skills": [
+    "Prospection",
+    "Négociation",
+    "Closing",
+    "CRM (Salesforce, HubSpot)",
+    "Account management",
+    "Avant-vente",
+    "Réponse aux appels d'offres",
+    "Fidélisation",
+    "Business development"
+   ]
+  },
+  {
+   "id": "mkt",
+   "name": "Communication / Marketing",
+   "skills": [
+    "Marketing digital",
+    "SEO",
+    "SEA",
+    "Réseaux sociaux",
+    "Content marketing",
+    "Emailing",
+    "Brand management",
+    "Relations presse",
+    "Growth hacking",
+    "Analytics"
+   ]
+  },
+  {
+   "id": "rh",
+   "name": "Ressources humaines",
+   "skills": [
+    "Recrutement",
+    "Paie",
+    "Droit du travail",
+    "GPEC",
+    "Formation",
+    "Onboarding",
+    "Relations sociales",
+    "SIRH",
+    "Marque employeur"
+   ]
+  },
+  {
+   "id": "droit",
+   "name": "Droit / Juridique",
+   "skills": [
+    "Droit des contrats",
+    "Droit des sociétés",
+    "Droit social",
+    "RGPD / données personnelles",
+    "Propriété intellectuelle",
+    "Contentieux",
+    "Compliance",
+    "Veille juridique",
+    "Rédaction d'actes"
+   ]
+  },
+  {
+   "id": "finance",
+   "name": "Banque / Finance",
+   "skills": [
+    "Analyse financière",
+    "Contrôle de gestion",
+    "Consolidation",
+    "Gestion des risques",
+    "Trésorerie",
+    "Audit",
+    "Modélisation financière",
+    "IFRS",
+    "Excel avancé"
+   ]
+  },
+  {
+   "id": "compta",
+   "name": "Comptabilité / Gestion",
+   "skills": [
+    "Comptabilité générale",
+    "Clôtures",
+    "Fiscalité",
+    "Déclarations TVA",
+    "Rapprochements bancaires",
+    "SAP",
+    "Sage",
+    "Contrôle de gestion"
+   ]
+  },
+  {
+   "id": "sciences",
+   "name": "Sciences / R&D",
+   "skills": [
+    "Méthodologie expérimentale",
+    "Analyse de données",
+    "Rédaction scientifique",
+    "Biologie",
+    "Géosciences",
+    "Chimie",
+    "Statistiques",
+    "Veille scientifique",
+    "Gestion de projet de recherche"
+   ]
+  },
+  {
+   "id": "sante",
+   "name": "Santé / Médical",
+   "skills": [
+    "Soins",
+    "Protocoles qualité",
+    "Dossier patient",
+    "Gestes d'urgence",
+    "Pharmacologie",
+    "Hygiène",
+    "Éducation thérapeutique"
+   ]
+  },
+  {
+   "id": "social",
+   "name": "Services à la personne / Social",
+   "skills": [
+    "Accompagnement social",
+    "Écoute active",
+    "Médiation",
+    "Animation",
+    "Gestion de bénévoles",
+    "Aide à domicile"
+   ]
+  },
+  {
+   "id": "educ",
+   "name": "Éducation / Formation",
+   "skills": [
+    "Ingénierie pédagogique",
+    "Animation de formation",
+    "E-learning",
+    "Évaluation des acquis",
+    "Tutorat"
+   ]
+  },
+  {
+   "id": "achats",
+   "name": "Achats",
+   "skills": [
+    "Sourcing",
+    "Négociation fournisseurs",
+    "Appels d'offres",
+    "Gestion des contrats",
+    "Supply chain"
+   ]
+  },
+  {
+   "id": "admin",
+   "name": "Administration / Secrétariat",
+   "skills": [
+    "Gestion d'agenda",
+    "Accueil",
+    "Rédaction de courriers",
+    "Suite Office",
+    "Classement / archivage",
+    "Organisation d'événements"
+   ]
+  },
+  {
+   "id": "logi",
+   "name": "Logistique / Transport",
+   "skills": [
+    "Gestion des stocks",
+    "Planification",
+    "WMS",
+    "Approvisionnement",
+    "Transport international",
+    "Lean"
+   ]
+  },
+  {
+   "id": "indus",
+   "name": "Industrie / Production",
+   "skills": [
+    "Lean manufacturing",
+    "Maintenance",
+    "Qualité production",
+    "Méthodes",
+    "Automatisme",
+    "Sécurité industrielle"
+   ]
+  },
+  {
+   "id": "qhse",
+   "name": "Qualité / HSE",
+   "skills": [
+    "ISO 9001",
+    "ISO 14001",
+    "Audit qualité",
+    "Analyse des risques",
+    "Sauveteur secouriste du travail (SST)",
+    "Amélioration continue"
+   ]
+  },
+  {
+   "id": "btp",
+   "name": "BTP / Construction",
+   "skills": [
+    "Conduite de travaux",
+    "Lecture de plans",
+    "Métré",
+    "Chiffrage",
+    "Sécurité chantier",
+    "AutoCAD"
+   ]
+  },
+  {
+   "id": "archi",
+   "name": "Architecture / Urbanisme",
+   "skills": [
+    "Conception",
+    "AutoCAD",
+    "Revit",
+    "Urbanisme réglementaire",
+    "Maquette 3D"
+   ]
+  },
+  {
+   "id": "immo",
+   "name": "Immobilier",
+   "skills": [
+    "Transaction",
+    "Gestion locative",
+    "Estimation",
+    "Syndic",
+    "Prospection"
+   ]
+  },
+  {
+   "id": "assu",
+   "name": "Assurance",
+   "skills": [
+    "Souscription",
+    "Gestion de sinistres",
+    "Conseil client",
+    "Actuariat",
+    "Réglementation"
+   ]
+  },
+  {
+   "id": "conseil",
+   "name": "Audit / Conseil",
+   "skills": [
+    "Audit",
+    "Conseil en organisation",
+    "Analyse de processus",
+    "Conduite du changement",
+    "Présentation client"
+   ]
+  },
+  {
+   "id": "hotel",
+   "name": "Hôtellerie / Restauration / Tourisme",
+   "skills": [
+    "Service en salle",
+    "Cuisine",
+    "Pâtisserie",
+    "Hygiène HACCP",
+    "Réception",
+    "Réservation"
+   ]
+  },
+  {
+   "id": "culture",
+   "name": "Culture / Arts / Médias",
+   "skills": [
+    "Rédaction",
+    "Montage vidéo",
+    "Photographie",
+    "Graphisme",
+    "Gestion de projet culturel"
+   ]
+  },
+  {
+   "id": "energie",
+   "name": "Énergie",
+   "skills": [
+    "Énergies renouvelables",
+    "Efficacité énergétique",
+    "Électricité",
+    "Réglementation énergétique"
+   ]
+  },
+  {
+   "id": "agri",
+   "name": "Agriculture / Environnement",
+   "skills": [
+    "Agronomie",
+    "Environnement",
+    "Biodiversité",
+    "Gestion de l'eau",
+    "Bilan carbone"
+   ]
+  },
+  {
+   "id": "public",
+   "name": "Fonction publique",
+   "skills": [
+    "Marchés publics",
+    "Droit administratif",
+    "Gestion de dossiers",
+    "Accueil du public"
+   ]
+  },
+  {
+   "id": "securite",
+   "name": "Sécurité / Défense",
+   "skills": [
+    "Surveillance",
+    "Sécurité incendie",
+    "Gestion de crise",
+    "Contrôle d'accès"
+   ]
+  },
+  {
+   "id": "artisanat",
+   "name": "Artisanat",
+   "skills": [
+    "Fabrication",
+    "Réparation",
+    "Relation client",
+    "Gestion d'atelier"
+   ]
+  },
+  {
+   "id": "sport",
+   "name": "Sport / Loisirs",
+   "skills": [
+    "Encadrement sportif",
+    "Animation",
+    "Préparation physique",
+    "Organisation d'événements"
+   ]
+  }
+ ]
+}

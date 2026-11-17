@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FitMeIn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+/* Layout idea: dark native app shell. Top bar + tabs, content in a single column of panels; pipeline as horizontal Kanban lanes. */
+:root{
+  --bg:#0B0910;          /* black, purple-biased */
+  --surface:#15111F;
+  --surface-2:#1D1830;
+  --line:#2D2645;
+  --purple:#4B1E8F;      /* deep purple */
+  --purple-hi:#A88BF5;   /* deep purple, readable on dark */
+  --amber:#FFB321;       /* orange-yellow */
+  --grey:#9B95AC;
+  --white:#F6F4FB;
+  --ok:#3DBE84; --ko:#EF5257;
+  --display:"Sora", "Segoe UI", system-ui, sans-serif;
+  --body:"DM Sans", "Segoe UI", system-ui, sans-serif;
+  --r:14px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--white);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:20px} h3{font-size:16px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.muted{color:var(--grey)}
+.small{font-size:13px}
+
+/* Top bar */
+header.top{position:sticky;top:0;z-index:20;background:rgba(11,9,16,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar{max-width:1240px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:20px}
+.logo .mark{width:30px;height:30px;border-radius:9px;background:var(--purple);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.logo b{color:var(--amber)}
+header.top{padding-top:env(safe-area-inset-top)}
+.pagetitle{font-size:17px;font-weight:600;color:var(--grey);margin-left:4px}
+.syncdot{margin-left:auto;width:9px;height:9px;border-radius:50%;background:var(--grey)}
+.syncdot.ok{background:var(--ok)}.syncdot.warn{background:var(--amber)}
+.syncnote{font-size:12px;color:var(--grey);margin:0;text-align:center}
+.link{color:var(--purple-hi);text-decoration:none;font-weight:600;font-size:14px;padding:6px 0}
+
+/* Bottom tab bar (mobile convention), left rail on wide screens */
+nav.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);align-items:end;
+  background:rgba(21,17,31,.97);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+nav.tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;min-height:52px;justify-content:center;color:var(--grey);text-decoration:none;font-size:11px;font-weight:600;border-radius:12px}
+nav.tabbar svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+nav.tabbar a[aria-current="page"]{color:var(--amber)}
+nav.tabbar a.fab svg{width:52px;height:52px;padding:13px;border-radius:50%;background:var(--purple);color:var(--white);stroke-width:2.4;margin-top:-22px;box-shadow:0 6px 18px rgba(75,30,143,.55),0 0 0 4px var(--bg)}
+nav.tabbar a.fab[aria-current="page"] svg{background:var(--amber);color:#1a1205}
+@media (min-width:1000px){
+  nav.tabbar{top:0;right:auto;width:92px;grid-template-columns:1fr;grid-auto-rows:76px;align-content:start;padding-top:84px;border-top:none;border-right:1px solid var(--line)}
+  nav.tabbar a.fab svg{margin-top:0}
+  body{padding-left:92px}
+}
+
+main{max-width:1100px;margin:0 auto;padding:16px 16px calc(110px + env(safe-area-inset-bottom));display:grid;gap:16px}
+@media (min-width:1000px){main{padding-bottom:40px}}
+input[type=search]{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-height:46px}
+.segs{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.segs::-webkit-scrollbar{display:none}
+.segs button{flex:none;min-height:38px;border:1px solid var(--line);background:var(--surface);color:var(--grey);border-radius:999px;padding:6px 14px;font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.segs button[aria-selected="true"]{background:var(--white);color:var(--bg);border-color:var(--white)}
+.segs .n{font-size:12px;opacity:.7}
+.list{display:grid;gap:10px}
+.list .card{padding:14px 14px 13px;min-height:72px}
+@media (min-width:760px){#board{grid-template-columns:repeat(2,1fr)}}
+.view{display:none;gap:20px}
+.view.on{display:grid}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.panel-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+
+/* Buttons & fields */
+.btn{border:1px solid var(--line);background:var(--surface-2);padding:10px 16px;min-height:44px;border-radius:12px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.small{min-height:36px;padding:6px 12px}
+.btn:hover{border-color:var(--purple-hi)}
+.btn.primary{background:var(--amber);color:#1a1205;border-color:var(--amber)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.purple{background:var(--purple);border-color:var(--purple)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--ko)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+label{display:block;font-size:13px;color:var(--grey);margin-bottom:5px;font-weight:500}
+input[type=text],input[type=url],input[type=date],input[type=time],input[type=email],select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+textarea{min-height:160px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--purple-hi);outline:none}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.kpi .v{font-family:var(--display);font-size:28px;font-weight:700}
+.kpi .l{font-size:13px;color:var(--grey)}
+.kpi.accent{border-color:var(--purple);background:linear-gradient(160deg,rgba(75,30,143,.35),var(--surface) 70%)}
+
+/* Kanban */
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:12px;overflow-x:auto;padding-bottom:6px}
+.lane{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;display:flex;flex-direction:column;gap:8px;min-height:180px}
+.lane-h{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;padding:2px 4px 6px}
+.lane-h .dot{width:9px;height:9px;border-radius:50%}
+.lane-h .count{margin-left:auto;color:var(--grey);font-size:12px}
+.card{background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--st,var(--grey));border-radius:10px;padding:10px 11px;cursor:pointer;text-align:left;width:100%;display:grid;gap:4px}
+.card:hover{border-color:var(--purple-hi);border-left-color:var(--st,var(--grey))}
+.card .t{font-weight:600;font-size:14px;line-height:1.3}
+.card .c{font-size:13px;color:var(--grey)}
+.card .meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--grey)}
+.pill.score{color:var(--bg);border:none}
+.pill.demo{color:var(--amber);border-color:rgba(255,179,33,.4)}
+.empty{font-size:13px;color:var(--grey);padding:8px 4px}
+
+/* Statuses */
+.s-analyse{--st:#6E6880}.s-nomatch{--st:#4A4458}.s-todo{--st:var(--amber)}.s-progress{--st:var(--purple-hi)}.s-ok{--st:var(--ok)}.s-ko{--st:var(--ko)}
+
+/* Analysis result */
+.score-ring{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:26px;font-weight:700;background:conic-gradient(var(--ring) calc(var(--p)*1%),var(--line) 0);position:relative;flex:none}
+.score-ring::after{content:"";position:absolute;inset:8px;border-radius:50%;background:var(--surface)}
+.score-ring span{position:relative;z-index:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:13px;padding:4px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
+.chip.ok{border-color:rgba(61,190,132,.5);color:#9FE6C4}
+.chip.part{border-color:rgba(255,179,33,.5);color:#FFD27A}
+.chip.miss{border-color:rgba(239,82,87,.5);color:#F7A3A6}
+.notice{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:14px}
+.notice.warn{border-color:rgba(255,179,33,.55)}
+.notice.err{border-color:rgba(239,82,87,.6)}
+.cvbox{white-space:pre-wrap;background:var(--white);color:#16131f;border-radius:10px;padding:22px 24px;font-family:Calibri,Arial,sans-serif;font-size:14px;line-height:1.45;max-height:560px;overflow:auto}
+.spinner{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--amber);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:-3px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+
+/* Profile skills */
+.domains{display:flex;flex-wrap:wrap;gap:6px}
+.dom{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13px}
+.dom[aria-pressed="true"]{background:var(--purple);border-color:var(--purple);color:var(--white)}
+.dom.has{border-color:var(--purple-hi)}
+.skilltable{width:100%;border-collapse:collapse}
+.skilltable td{padding:8px 6px;border-top:1px solid var(--line);vertical-align:middle}
+.lvl{display:flex;gap:4px}
+.lvl button{width:30px;height:26px;border-radius:7px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-size:12px;font-weight:600;color:var(--grey)}
+.lvl button[aria-pressed="true"]{background:var(--amber);border-color:var(--amber);color:#1a1205}
+.sugg{display:flex;flex-wrap:wrap;gap:6px}
+.sugg button{border:1px dashed var(--line);background:transparent;border-radius:999px;padding:5px 11px;cursor:pointer;font-size:13px;color:var(--grey)}
+.sugg button:hover{border-color:var(--amber);color:var(--white)}
+
+/* Drawer */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:none}
+.scrim.on{display:block}
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(560px,100%);background:var(--surface);border-left:1px solid var(--line);z-index:50;transform:translateX(100%);transition:transform .2s ease;overflow-y:auto;padding:20px 18px 40px;display:grid;gap:16px;align-content:start}
+.drawer.on{transform:none}
+@media (prefers-reduced-motion:reduce){.drawer{transition:none}}
+.ms{display:grid;gap:4px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.ms .d{font-weight:600}
+.statusbar{display:flex;flex-wrap:wrap;gap:6px}
+.statusbar button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 11px;cursor:pointer;font-size:13px;color:var(--grey)}
+.statusbar button[aria-pressed="true"]{color:var(--white);border-color:var(--st);box-shadow:inset 0 0 0 1px var(--st)}
+
+/* Calendar */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal .dh{font-size:12px;color:var(--grey);text-align:center;padding:4px 0}
+.cal .day{min-height:64px;border:1px solid var(--line);border-radius:8px;padding:4px 6px;font-size:12px;background:var(--bg)}
+.cal .day.out{opacity:.35}
+.cal .day.today{border-color:var(--amber)}
+.cal .ev{display:block;margin-top:3px;background:var(--purple);border-radius:5px;padding:1px 5px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border:none;width:100%;text-align:left;color:var(--white)}
+.agenda{display:grid;gap:8px}
+.agenda .it{display:grid;grid-template-columns:86px 1fr;gap:12px;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;cursor:pointer;text-align:left;width:100%}
+.agenda .date{font-family:var(--display);font-weight:600;color:var(--amber)}
+@media (max-width:640px){.cal .day{min-height:48px}.cal .ev{font-size:10px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="bar">
+    <div class="logo"><div class="mark" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.2 4.2L19 7" stroke="#FFB321" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div><span>Fit<b>Me</b>In</span></div>
+    <h1 class="pagetitle" id="pagetitle">Accueil</h1>
+    <span class="syncdot" id="syncdot" title="Chargement…" aria-label="État de l'enregistrement"></span>
+  </div>
+</header>
+
+<nav class="tabbar" aria-label="Navigation principale">
+  <a href="#accueil" data-v="accueil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></a>
+  <a href="#offres" data-v="offres"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>Offres</span></a>
+  <a href="#analyse" data-v="analyse" class="fab" aria-label="Analyser une offre"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Analyser</span></a>
+  <a href="#agenda" data-v="agenda"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Agenda</span></a>
+  <a href="#profil" data-v="profil"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span>Profil</span></a>
+</nav>
+
+<main>
+  <!-- ACCUEIL -->
+  <section class="view" id="v-accueil">
+    <div class="kpis" id="kpis"></div>
+    <div class="panel">
+      <div class="panel-h"><h2>Prochains entretiens</h2><a href="#agenda" class="link">Tout voir</a></div>
+      <div class="agenda" id="home-next"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>À postuler</h2><a href="#offres" class="link">Toutes les offres</a></div>
+      <div class="list" id="home-todo"></div>
+    </div>
+    <p class="syncnote" id="syncnote">Chargement…</p>
+  </section>
+
+  <!-- OFFRES -->
+  <section class="view" id="v-offres">
+    <input type="search" id="search" placeholder="Rechercher un poste ou une entreprise" aria-label="Rechercher">
+    <div class="segs" id="segs" role="tablist" aria-label="Filtrer par statut"></div>
+    <div class="list" id="board"></div>
+  </section>
+
+  <!-- ANALYSE -->
+  <section class="view" id="v-analyse">
+    <div class="panel">
+      <div class="panel-h"><h2>Nouvelle offre</h2><span class="muted small">Score calculé à partir de ton profil</span></div>
+      <div class="grid2">
+        <div><label for="o-url">Lien de l'offre</label><input type="url" id="o-url" placeholder="https://www.welcometothejungle.com/…"></div>
+        <div><span class="label">Ou fichier</span><label class="btn" style="width:100%;cursor:pointer" for="o-file">Importer un Word ou PDF</label><input type="file" id="o-file" accept=".docx,.pdf,.txt" class="sr"></div>
+      </div>
+      <p class="muted small" style="margin:8px 0 12px">LinkedIn, Indeed et la plupart des sites bloquent la lecture directe d'une page. Colle le texte de l'offre ci-dessous ; le lien sert à retrouver l'offre et à éviter les doublons.</p>
+      <label for="o-text">Texte de l'offre</label>
+      <textarea id="o-text" placeholder="Colle ici l'intitulé, la description du poste et le profil recherché."></textarea>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" id="btn-analyse">Vérifier si je corresponds</button>
+        <span id="analyse-status" class="muted small"></span>
+      </div>
+    </div>
+    <div id="result"></div>
+  </section>
+
+  <!-- PROFIL -->
+  <section class="view" id="v-profil">
+    <div class="panel">
+      <div class="panel-h"><h2>Identité</h2><span class="muted small" id="prof-saved"></span></div>
+      <div class="grid2">
+        <div><label for="p-name">Prénom et nom</label><input type="text" id="p-name"></div>
+        <div><label for="p-title">Poste visé</label><input type="text" id="p-title" placeholder="Product Owner, Business Analyst…"></div>
+        <div><label for="p-loc">Localisation</label><input type="text" id="p-loc" placeholder="Lyon, télétravail partiel"></div>
+        <div><label for="p-contract">Contrat recherché</label>
+          <select id="p-contract"><option value="">Indifférent</option><option>CDI</option><option>CDD</option><option>Freelance</option><option>Alternance</option><option>Stage</option></select></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Mon CV</h2><span class="muted small" id="cv-info"></span></div>
+      <div class="row">
+        <label class="btn" style="flex:1;cursor:pointer" for="p-cv">Importer mon CV (.docx ou .pdf)</label><input type="file" id="p-cv" accept=".docx,.pdf,.txt" class="sr">
+      </div>
+      <label for="p-cvtext" style="margin-top:12px">Contenu du CV (modifiable)</label>
+      <textarea id="p-cvtext" style="min-height:200px" placeholder="Le texte de ton CV apparaît ici après l'import. Tu peux aussi le coller."></textarea>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Compétences par domaine</h2><span class="muted small">Niveau : 1 Notions · 2 Intermédiaire · 3 Avancé · 4 Expert</span></div>
+      <label>Domaines professionnels</label>
+      <div class="domains" id="domains"></div>
+      <div id="domain-detail" style="margin-top:16px"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Toutes mes compétences</h2><span class="muted small num" id="skill-count"></span></div>
+      <div style="overflow-x:auto"><table class="skilltable" id="all-skills"></table></div>
+    </div>
+  </section>
+
+  <!-- AGENDA -->
+  <section class="view" id="v-agenda">
+    <div class="panel">
+      <div class="panel-h"><h2>Prochains jalons</h2></div>
+      <div class="agenda" id="agenda-list"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2 id="cal-title"></h2>
+        <div class="row"><button class="btn ghost" id="cal-prev" aria-label="Mois précédent">‹</button><button class="btn ghost" id="cal-next" aria-label="Mois suivant">›</button></div></div>
+      <div class="cal" id="cal"></div>
+    </div>
+  </section>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Détail de la candidature"></aside>
+
+<script>
+/* ---------- Référentiel (niveau 1 = catégories des jobboards, niveau 3 = compétences suggérées) ---------- */
+const DOMAINS = [
+ ["it","Informatique / IT / Digital",["Java","Spring Boot","JavaScript","TypeScript","Angular","React","Vue.js","Node.js","Python","SQL","PostgreSQL","MongoDB","Git","CI/CD","Docker","Kubernetes","AWS","Azure","API REST","Tests unitaires","Linux","Cybersécurité"]],
+ ["produit","Produit / Gestion de projet",["Animation d'ateliers","Cadrage du besoin","Recueil des besoins","Priorisation (MoSCoW, WSJF)","Gestion du backlog","Rédaction de user stories","Critères d'acceptance","Plans de test / recette","Roadmap produit","Scrum","Kanban","SAFe","Jira","Confluence","Story mapping","Définition des KPIs","Gestion des parties prenantes","Démo / sprint review"]],
+ ["data","Data / IA",["Python","Pandas","SQL","Power BI","Tableau","Machine learning","Deep learning","NLP","LLM / IA générative","RAG","MLOps","Statistiques","Data visualisation","Spark"]],
+ ["mgmt","Management / Direction",["Management d'équipe","Recrutement","Entretiens annuels","Conduite du changement","Pilotage budgétaire","Stratégie","Gestion de conflits","Reporting","Délégation","Leadership"]],
+ ["com","Commerce / Vente",["Prospection","Négociation","Closing","CRM (Salesforce, HubSpot)","Account management","Avant-vente","Réponse aux appels d'offres","Fidélisation","Business development"]],
+ ["mkt","Communication / Marketing",["Marketing digital","SEO","SEA","Réseaux sociaux","Content marketing","Emailing","Brand management","Relations presse","Growth hacking","Analytics"]],
+ ["rh","Ressources humaines",["Recrutement","Paie","Droit du travail","GPEC","Formation","Onboarding","Relations sociales","SIRH","Marque employeur"]],
+ ["droit","Droit / Juridique",["Droit des contrats","Droit des sociétés","Droit social","RGPD / données personnelles","Propriété intellectuelle","Contentieux","Compliance","Veille juridique","Rédaction d'actes"]],
+ ["finance","Banque / Finance",["Analyse financière","Contrôle de gestion","Consolidation","Gestion des risques","Trésorerie","Audit","Modélisation financière","IFRS","Excel avancé"]],
+ ["compta","Comptabilité / Gestion",["Comptabilité générale","Clôtures","Fiscalité","Déclarations TVA","Rapprochements bancaires","SAP","Sage","Contrôle de gestion"]],
+ ["sciences","Sciences / R&D",["Méthodologie expérimentale","Analyse de données","Rédaction scientifique","Biologie","Géosciences","Chimie","Statistiques","Veille scientifique","Gestion de projet de recherche"]],
+ ["sante","Santé / Médical",["Soins","Protocoles qualité","Dossier patient","Gestes d'urgence","Pharmacologie","Hygiène","Éducation thérapeutique"]],
+ ["social","Services à la personne / Social",["Accompagnement social","Écoute active","Médiation","Animation","Gestion de bénévoles","Aide à domicile"]],
+ ["educ","Éducation / Formation",["Ingénierie pédagogique","Animation de formation","E-learning","Évaluation des acquis","Tutorat"]],
+ ["achats","Achats",["Sourcing","Négociation fournisseurs","Appels d'offres","Gestion des contrats","Supply chain"]],
+ ["admin","Administration / Secrétariat",["Gestion d'agenda","Accueil","Rédaction de courriers","Suite Office","Classement / archivage","Organisation d'événements"]],
+ ["logi","Logistique / Transport",["Gestion des stocks","Planification","WMS","Approvisionnement","Transport international","Lean"]],
+ ["indus","Industrie / Production",["Lean manufacturing","Maintenance","Qualité production","Méthodes","Automatisme","Sécurité industrielle"]],
+ ["qhse","Qualité / HSE",["ISO 9001","ISO 14001","Audit qualité","Analyse des risques","Sauveteur secouriste du travail (SST)","Amélioration continue"]],
+ ["btp","BTP / Construction",["Conduite de travaux","Lecture de plans","Métré","Chiffrage","Sécurité chantier","AutoCAD"]],
+ ["archi","Architecture / Urbanisme",["Conception","AutoCAD","Revit","Urbanisme réglementaire","Maquette 3D"]],
+ ["immo","Immobilier",["Transaction","Gestion locative","Estimation","Syndic","Prospection"]],
+ ["assu","Assurance",["Souscription","Gestion de sinistres","Conseil client","Actuariat","Réglementation"]],
+ ["conseil","Audit / Conseil",["Audit","Conseil en organisation","Analyse de processus","Conduite du changement","Présentation client"]],
+ ["hotel","Hôtellerie / Restauration / Tourisme",["Service en salle","Cuisine","Pâtisserie","Hygiène HACCP","Réception","Réservation"]],
+ ["culture","Culture / Arts / Médias",["Rédaction","Montage vidéo","Photographie","Graphisme","Gestion de projet culturel"]],
+ ["energie","Énergie",["Énergies renouvelables","Efficacité énergétique","Électricité","Réglementation énergétique"]],
+ ["agri","Agriculture / Environnement",["Agronomie","Environnement","Biodiversité","Gestion de l'eau","Bilan carbone"]],
+ ["public","Fonction publique",["Marchés publics","Droit administratif","Gestion de dossiers","Accueil du public"]],
+ ["securite","Sécurité / Défense",["Surveillance","Sécurité incendie","Gestion de crise","Contrôle d'accès"]],
+ ["artisanat","Artisanat",["Fabrication","Réparation","Relation client","Gestion d'atelier"]],
+ ["sport","Sport / Loisirs",["Encadrement sportif","Animation","Préparation physique","Organisation d'événements"]],
+].map(([id,name,skills])=>({id,name,skills}));
+const LEVELS=["Notions","Intermédiaire","Avancé","Expert"];
+
+const STATUSES=[
+ {id:"analyse",label:"À analyser",cls:"s-analyse",color:"#6E6880"},
+ {id:"nomatch",label:"Pas de match",cls:"s-nomatch",color:"#4A4458"},
+ {id:"todo",label:"À faire",cls:"s-todo",color:"#FFB321"},
+ {id:"progress",label:"En cours",cls:"s-progress",color:"#A88BF5"},
+ {id:"ok",label:"Terminée OK",cls:"s-ok",color:"#3DBE84"},
+ {id:"ko",label:"Terminée KO",cls:"s-ko",color:"#EF5257"},
+];
+const ST=Object.fromEntries(STATUSES.map(s=>[s.id,s]));
+const MS_TYPES=["Entretien RH","Entretien manager","Test technique","Cas pratique","Entretien final","Proposition","Autre"];
+const KO_REASONS=["Profil pas assez senior","Profil trop senior","Compétence manquante","Poste pourvu","Salaire / TJM","Pas de retour","Autre"];
+
+/* ---------- Helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+const todayISO=()=>new Date().toISOString().slice(0,10);
+const fmtDate=d=>{if(!d)return"";const x=new Date(d+"T12:00:00");return x.toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"})};
+const fmtShort=d=>{const x=new Date(d+"T12:00:00");return x.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})};
+const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim();
+function hash(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)}
+function normUrl(u){try{const x=new URL(u);return (x.hostname.replace(/^www\./,"")+x.pathname).replace(/\/$/,"").toLowerCase()}catch{return""}}
+function scoreColor(s){return s>=70?"var(--ok)":s>=50?"var(--amber)":"var(--ko)"}
+
+/* ---------- State & persistence ---------- */
+let state={profile:{name:"",title:"",location:"",contract:"",cvText:"",cvFile:"",skills:[]},offers:[]};
+let db=null,uidUser=null,sample=null,store="local";
+const DEMO=[
+ {id:"demo1",demo:true,title:"Product Owner Data",company:"Exemple : Banque Horizon",location:"Paris",status:"progress",score:82,appliedAt:"2026-11-04",milestones:[{id:"m1",type:"Entretien manager",date:addDays(3),time:"10:00",person:"Claire Martin",role:"Head of Product",mode:"Visio"}],covered:["Gestion du backlog","Scrum","Jira"],partial:["SQL"],missing:[]},
+ {id:"demo2",demo:true,title:"Business Analyst SI",company:"Exemple : Assurances Atlas",location:"Lyon",status:"todo",score:74,covered:["Cadrage du besoin","Rédaction de user stories"],partial:[],missing:["SAFe"]},
+ {id:"demo3",demo:true,title:"Chef de projet BTP",company:"Exemple : Constructa",location:"Nantes",status:"nomatch",score:28},
+ {id:"demo4",demo:true,title:"Product Manager B2B",company:"Exemple : SaaSly",location:"Remote",status:"ko",score:61,outcome:{date:"2026-11-12",stage:"Entretien final",reason:"Profil pas assez senior",comment:""}},
+];
+function addDays(n){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
+const realOffers=()=>state.offers;
+const shownOffers=()=>state.offers.length?state.offers:DEMO;
+
+function setSync(t){$("#syncnote").textContent=t;const d=$("#syncdot");d.title=t;d.className="syncdot "+(/Enregistré dans ton compte/.test(t)?"ok":/Chargement|Connexion/.test(t)?"":"warn")}
+
+async function init(){
+  try{const l=localStorage.getItem("fitmein");if(l){const p=JSON.parse(l);state={...state,...p}}}catch{}
+  renderAll();route();
+  setSync("Données gardées dans ce navigateur. Connexion au stockage en ligne…");
+  if(!window.claude||!window.claude.use){setSync("Données gardées dans ce navigateur uniquement.");return}
+  const [dbNs,userNs,smp]=await Promise.all([claude.use("db"),claude.use("user"),claude.use("sample")]);
+  sample=smp;
+  if(dbNs&&userNs){
+    uidUser=await userNs.id();
+    if(uidUser){db=dbNs;await loadDb()}
+  }
+  if(!db)setSync("Données gardées dans ce navigateur uniquement.");
+  if(!sample){$("#analyse-status").textContent="L'analyse par IA n'est pas disponible dans cette vue."}
+}
+function profRef(){return db.doc("data/users/"+uidUser+"/profile")}
+function offersCol(){return profRef().collection("offers")}
+async function loadDb(){
+  let timer=setTimeout(()=>setSync("Le stockage en ligne ne répond pas encore. Tes modifications restent dans ce navigateur."),10000);
+  try{
+    const [p,os]=await Promise.all([profRef().get(),offersCol().get()]);
+    clearTimeout(timer);
+    if(p.exists){state.profile={...state.profile,...p.data()}}
+    else if(state.profile.cvText||state.profile.skills.length){await profRef().set(clone(state.profile))}
+    const remote=os.docs.map(d=>d.data());
+    if(remote.length){state.offers=remote.map(o=>clone(o)).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""))}
+    else if(state.offers.length){for(const o of state.offers){await offersCol().doc(o.id).set(clone(o))}}
+    store="db";setSync("Enregistré dans ton compte, privé.");
+    saveLocal();renderAll();
+  }catch(e){clearTimeout(timer);db=null;setSync("Stockage en ligne indisponible ("+(e.code||"erreur")+"). Données gardées dans ce navigateur.")}
+}
+const clone=o=>JSON.parse(JSON.stringify(o));
+function saveLocal(){try{localStorage.setItem("fitmein",JSON.stringify(state))}catch{}}
+let profTimer=null,profWriting=false,profDirty=false;
+function saveProfile(){
+  saveLocal();$("#prof-saved").textContent="Modifications non enregistrées…";
+  clearTimeout(profTimer);profTimer=setTimeout(flushProfile,700);
+}
+async function flushProfile(){
+  if(!db){$("#prof-saved").textContent="Enregistré dans ce navigateur";return}
+  if(profWriting){profDirty=true;return}
+  profWriting=true;
+  try{await profRef().set(clone(state.profile));$("#prof-saved").textContent="Enregistré"}
+  catch(e){$("#prof-saved").textContent="Échec de l'enregistrement en ligne ("+(e.code||"erreur")+")"}
+  profWriting=false;if(profDirty){profDirty=false;flushProfile()}
+}
+const offerWrites={};
+async function saveOffer(o){
+  saveLocal();
+  if(!db)return;
+  const prev=offerWrites[o.id]||Promise.resolve();
+  offerWrites[o.id]=prev.then(()=>offersCol().doc(o.id).set(clone(o))).catch(e=>{
+    setSync(e.code==="quota_exceeded"?"Stockage plein : supprime des offres anciennes.":"Échec de l'enregistrement en ligne ("+(e.code||"erreur")+")")});
+  return offerWrites[o.id];
+}
+async function deleteOffer(id){
+  state.offers=state.offers.filter(o=>o.id!==id);saveLocal();
+  if(db){try{await offersCol().doc(id).delete()}catch{}}
+}
+
+/* ---------- Routing ---------- */
+function route(){
+  const v=(location.hash||"#accueil").slice(1);
+  const TITLES={accueil:"Accueil",offres:"Mes offres",analyse:"Analyser une offre",agenda:"Agenda",profil:"Mon profil"};
+  const name=TITLES[v]?v:"accueil";
+  document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+name));
+  document.querySelectorAll("nav.tabbar a").forEach(a=>{if(a.dataset.v===name)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
+  $("#pagetitle").textContent=TITLES[name];window.scrollTo(0,0);
+}
+let filter="all";
+window.addEventListener("hashchange",route);
+
+function renderAll(){renderKpis();renderBoard();renderProfile();renderAgenda()}
+
+/* ---------- Dashboard ---------- */
+function renderKpis(){
+  const os=shownOffers();
+  const analysed=os.filter(o=>o.score!=null).length;
+  const matched=os.filter(o=>o.score>=50).length;
+  const sent=os.filter(o=>["progress","ok","ko"].includes(o.status)).length;
+  const upcoming=os.flatMap(o=>(o.milestones||[]).filter(m=>m.date>=todayISO())).length;
+  const rate=analysed?Math.round(matched/analysed*100):0;
+  $("#kpis").innerHTML=[
+   ["accent",analysed,"offres analysées"],
+   ["",rate+" %","taux de correspondance"],
+   ["",sent,"candidatures envoyées"],
+   ["",upcoming,"jalons à venir"],
+  ].map(([c,v,l])=>`<div class="kpi ${c}"><div class="v num">${v}</div><div class="l">${l}</div></div>`).join("")+(!state.offers.length?'<p class="small muted" style="grid-column:1/-1;margin:0">Chiffres d\'exemple : ils deviennent les tiens dès ta première offre analysée.</p>':"");
+}
+function renderBoard(){
+  const q=norm($("#search").value);
+  const all=shownOffers().filter(o=>!q||norm(o.title+" "+o.company).includes(q));
+  $("#segs").innerHTML=[{id:"all",label:"Toutes"},...STATUSES].map(s=>{
+    const n=s.id==="all"?all.length:all.filter(o=>o.status===s.id).length;
+    return `<button role="tab" data-seg="${s.id}" aria-selected="${filter===s.id}">${s.color?`<span class="dot" style="width:8px;height:8px;border-radius:50%;background:${s.color}"></span>`:""}${s.label}<span class="n num">${n}</span></button>`}).join("");
+  const items=filter==="all"?all:all.filter(o=>o.status===filter);
+  $("#board").innerHTML=items.map(cardHtml).join("")||`<div class="empty">Aucune offre ${filter==="all"?"":"dans « "+ST[filter].label+" »"}.</div>`;
+  const todo=shownOffers().filter(o=>o.status==="todo").slice(0,3);
+  $("#home-todo").innerHTML=todo.map(cardHtml).join("")||'<div class="empty">Rien à postuler pour l\'instant. Analyse une offre avec le bouton +.</div>';
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-seg]");if(b){filter=b.dataset.seg;renderBoard()}});
+function cardHtml(o){
+  const next=(o.milestones||[]).filter(m=>m.date>=todayISO()).sort((a,b)=>a.date.localeCompare(b.date))[0];
+  return `<button class="card ${ST[o.status]?.cls||""}" data-open="${esc(o.id)}">
+    <span class="t">${esc(o.title||"Offre sans titre")}</span>
+    <span class="c">${esc(o.company||"Entreprise inconnue")}${o.location?" · "+esc(o.location):""}</span>
+    <span class="meta"><span class="pill" style="color:${ST[o.status]?.color};border-color:currentColor">${ST[o.status]?.label||""}</span>${o.score!=null?`<span class="pill score num" style="background:${scoreColor(o.score)}">${o.score}</span>`:""}
+    ${next?`<span class="pill">${esc(next.type)} · ${fmtShort(next.date)}</span>`:""}
+    ${o.status==="ko"&&o.outcome?.reason?`<span class="pill">${esc(o.outcome.reason)}</span>`:""}
+    ${o.demo?'<span class="pill demo">Exemple</span>':""}</span></button>`;
+}
+$("#search").addEventListener("input",renderBoard);
+document.addEventListener("click",e=>{const b=e.target.closest("[data-open]");if(b)openDrawer(b.dataset.open)});
+
+/* ---------- Drawer ---------- */
+function findOffer(id){return shownOffers().find(o=>o.id===id)}
+function closeDrawer(){$("#drawer").classList.remove("on");$("#scrim").classList.remove("on")}
+$("#scrim").addEventListener("click",closeDrawer);
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDrawer()});
+function openDrawer(id){
+  const o=findOffer(id);if(!o)return;
+  const d=$("#drawer");
+  const ro=!!o.demo;
+  const ms=(o.milestones||[]).slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  d.innerHTML=`
+   <div class="row" style="justify-content:space-between;align-items:flex-start">
+     <div><h2>${esc(o.title||"Offre")}</h2><div class="muted">${esc(o.company||"")}${o.location?" · "+esc(o.location):""}${o.contract?" · "+esc(o.contract):""}</div></div>
+     <button class="btn ghost" id="d-close" aria-label="Fermer">✕</button></div>
+   ${ro?'<div class="notice warn">Offre d\'exemple : analyse ta première offre pour remplir ton tableau de bord.</div>':""}
+   ${o.score!=null?`<div class="row"><div class="score-ring" style="--p:${o.score};--ring:${scoreColor(o.score)}"><span class="num">${o.score}</span></div>
+     <div style="flex:1;min-width:200px;display:grid;gap:8px">${skillChips(o)}</div></div>`:""}
+   ${o.url?`<div class="small"><a href="${esc(o.url)}" style="color:var(--purple-hi)">Voir l'offre d'origine</a> <span class="muted">(${esc(o.url)})</span></div>`:""}
+   <div><label>Statut</label><div class="statusbar">${STATUSES.map(s=>`<button ${ro?"disabled":""} data-st="${s.id}" class="${s.cls}" aria-pressed="${o.status===s.id}">${s.label}</button>`).join("")}</div></div>
+   ${["progress","ok","ko"].includes(o.status)?`<div class="grid2">
+     <div><label for="d-applied">Date de dépôt</label><input type="date" id="d-applied" value="${esc(o.appliedAt||"")}" ${ro?"disabled":""}></div>
+     <div><label for="d-channel">Canal</label><select id="d-channel" ${ro?"disabled":""}>${["","Site de l'entreprise","LinkedIn","Indeed","HelloWork","Welcome to the Jungle","France Travail","Cooptation","Cabinet"].map(c=>`<option ${o.channel===c?"selected":""}>${c}</option>`).join("")}</select></div></div>`:""}
+   ${o.status==="ko"?`<div class="panel" style="padding:14px"><h3 style="margin-bottom:10px">Retour négatif</h3><div class="grid2">
+     <div><label for="k-date">Date du retour</label><input type="date" id="k-date" value="${esc(o.outcome?.date||"")}" ${ro?"disabled":""}></div>
+     <div><label for="k-stage">Étape atteinte</label><select id="k-stage" ${ro?"disabled":""}>${["","Candidature",...MS_TYPES].map(c=>`<option ${o.outcome?.stage===c?"selected":""}>${c}</option>`).join("")}</select></div>
+     <div><label for="k-reason">Motif</label><select id="k-reason" ${ro?"disabled":""}>${["",...KO_REASONS].map(c=>`<option ${o.outcome?.reason===c?"selected":""}>${c}</option>`).join("")}</select></div></div>
+     <label for="k-comment" style="margin-top:10px">Commentaire de l'employeur</label><textarea id="k-comment" style="min-height:70px" ${ro?"disabled":""}>${esc(o.outcome?.comment||"")}</textarea></div>`:""}
+   ${o.status==="ok"?`<div class="panel" style="padding:14px"><h3 style="margin-bottom:10px">Proposition reçue</h3><div class="grid2">
+     <div><label for="ok-date">Date de la proposition</label><input type="date" id="ok-date" value="${esc(o.outcome?.date||"")}" ${ro?"disabled":""}></div>
+     <div><label for="ok-start">Date de démarrage</label><input type="date" id="ok-start" value="${esc(o.outcome?.start||"")}" ${ro?"disabled":""}></div></div></div>`:""}
+   <div><div class="panel-h" style="margin-bottom:8px"><h3>Jalons</h3></div>
+     <div style="display:grid;gap:8px">${ms.map(m=>`<div class="ms"><div class="row" style="justify-content:space-between"><span class="d">${esc(m.type)} · ${fmtDate(m.date)}${m.time?" à "+esc(m.time):""}</span>${ro?"":`<button class="btn ghost danger small" data-delms="${m.id}">Supprimer</button>`}</div>
+       <span class="small muted">${[m.person&&esc(m.person)+(m.role?" ("+esc(m.role)+")":""),m.mode&&esc(m.mode)].filter(Boolean).join(" · ")}</span>${m.notes?`<span class="small">${esc(m.notes)}</span>`:""}</div>`).join("")||'<div class="empty">Aucun jalon pour l\'instant.</div>'}</div>
+     ${ro?"":`<details style="margin-top:10px"><summary style="cursor:pointer;color:var(--amber);font-weight:600">+ Ajouter un jalon</summary>
+       <div class="grid2" style="margin-top:10px">
+        <div><label for="m-type">Type</label><select id="m-type">${MS_TYPES.map(t=>`<option>${t}</option>`).join("")}</select></div>
+        <div><label for="m-mode">Mode</label><select id="m-mode"><option>Visio</option><option>Présentiel</option><option>Téléphone</option></select></div>
+        <div><label for="m-date">Date</label><input type="date" id="m-date" value="${todayISO()}"></div>
+        <div><label for="m-time">Heure</label><input type="time" id="m-time" value="10:00"></div>
+        <div><label for="m-person">Interlocuteur</label><input type="text" id="m-person" placeholder="Nom"></div>
+        <div><label for="m-role">Rôle</label><input type="text" id="m-role" placeholder="RH, manager…"></div></div>
+       <label for="m-notes" style="margin-top:10px">Notes</label><textarea id="m-notes" style="min-height:60px" placeholder="Lien visio, adresse, points à préparer"></textarea>
+       <button class="btn purple" id="m-add" style="margin-top:10px">Ajouter le jalon</button></details>`}</div>
+   ${o.cvText?`<div><div class="panel-h" style="margin-bottom:8px"><h3>CV envoyé</h3><button class="btn small" data-copy="cv">Copier</button></div><div class="cvbox" id="d-cv">${esc(o.cvText)}</div></div>`:""}
+   ${!ro&&o.text&&!o.cvText&&o.score>=50?`<button class="btn primary" id="d-gencv">Générer mon CV ATS pour cette offre</button>`:""}
+   <label for="d-notes">Notes</label><textarea id="d-notes" style="min-height:80px" ${ro?"disabled":""}>${esc(o.notes||"")}</textarea>
+   ${ro?"":`<button class="btn ghost danger" id="d-del">Supprimer cette offre</button>`}`;
+  $("#scrim").classList.add("on");d.classList.add("on");
+  $("#d-close").onclick=closeDrawer;$("#d-close").focus();
+  if(ro)return;
+  d.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{o.status=b.dataset.st;if(o.status==="progress"&&!o.appliedAt)o.appliedAt=todayISO();commit(o);openDrawer(o.id)});
+  const bind=(sel,fn)=>{const el=d.querySelector(sel);if(el)el.addEventListener("change",()=>{fn(el.value);commit(o,false)})};
+  bind("#d-applied",v=>o.appliedAt=v);bind("#d-channel",v=>o.channel=v);bind("#d-notes",v=>o.notes=v);
+  bind("#k-date",v=>(o.outcome??={}).date=v);bind("#k-stage",v=>(o.outcome??={}).stage=v);bind("#k-reason",v=>(o.outcome??={}).reason=v);bind("#k-comment",v=>(o.outcome??={}).comment=v);
+  bind("#ok-date",v=>(o.outcome??={}).date=v);bind("#ok-start",v=>(o.outcome??={}).start=v);
+  const add=d.querySelector("#m-add");if(add)add.onclick=()=>{
+    const m={id:uid(),type:$("#m-type").value,mode:$("#m-mode").value,date:$("#m-date").value,time:$("#m-time").value,person:$("#m-person").value.trim(),role:$("#m-role").value.trim(),notes:$("#m-notes").value.trim()};
+    if(!m.date)return;(o.milestones??=[]).push(m);if(o.status==="todo"||o.status==="analyse"){o.status="progress";o.appliedAt??=todayISO()}commit(o);openDrawer(o.id)};
+  d.querySelectorAll("[data-delms]").forEach(b=>b.onclick=()=>{o.milestones=o.milestones.filter(m=>m.id!==b.dataset.delms);commit(o);openDrawer(o.id)});
+  const del=d.querySelector("#d-del");if(del)del.onclick=()=>{
+    if(del.dataset.armed){deleteOffer(o.id);closeDrawer();renderAll()}else{del.dataset.armed="1";del.textContent="Confirmer la suppression"}};
+  const g=d.querySelector("#d-gencv");if(g)g.onclick=()=>generateCV(o,g);
+  d.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>copyText(o.cvText,b));
+}
+function skillChips(o){
+  const sec=(t,arr,c)=>arr?.length?`<div><div class="small muted" style="margin-bottom:4px">${t}</div><div class="chips">${arr.map(x=>`<span class="chip ${c}">${esc(x)}</span>`).join("")}</div></div>`:"";
+  return sec("Compétences couvertes",o.covered,"ok")+sec("Niveau un peu juste",o.partial,"part")+sec("Manquantes",o.missing,"miss")+(o.summary?`<div class="small">${esc(o.summary)}</div>`:"");
+}
+function commit(o,rerender=true){o.updatedAt=new Date().toISOString();saveOffer(o);if(rerender)renderAll();else{renderKpis();renderBoard();renderAgenda()}}
+async function copyText(t,btn){try{await navigator.clipboard.writeText(t);btn.textContent="Copié"}catch{btn.textContent="Sélectionne le texte pour le copier"}setTimeout(()=>btn.textContent="Copier",2000)}
+
+/* ---------- File reading ---------- */
+async function readFile(file){
+  const name=file.name.toLowerCase();
+  if(name.endsWith(".txt"))return await file.text();
+  if(name.endsWith(".docx")){
+    if(!window.mammoth)throw new Error("Lecteur Word indisponible");
+    const r=await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()});return r.value;
+  }
+  if(name.endsWith(".pdf")){
+    if(!window.pdfjsLib)throw new Error("Lecteur PDF indisponible");
+    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;let out="";
+    for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);const c=await p.getTextContent();out+=c.items.map(it=>it.str).join(" ")+"\n"}
+    return out;
+  }
+  throw new Error("Format non pris en charge : utilise .docx, .pdf ou .txt");
+}
+
+/* ---------- Analyse ---------- */
+$("#o-file").addEventListener("change",async e=>{
+  const f=e.target.files[0];if(!f)return;const st=$("#analyse-status");
+  st.innerHTML='<span class="spinner"></span> Lecture du fichier…';
+  try{$("#o-text").value=(await readFile(f)).trim();st.textContent="Fichier lu : "+f.name}
+  catch(err){st.textContent="Impossible de lire ce fichier ("+err.message+"). Copie-colle le texte de l'offre."}
+});
+function profileSummary(){
+  const p=state.profile;
+  const skills=p.skills.map(s=>`- ${s.name} (${DOMAINS.find(d=>d.id===s.domain)?.name||"Autre"}) : niveau ${s.level}/4 ${LEVELS[s.level-1]}`).join("\n");
+  return `Nom : ${p.name||"(non renseigné)"}\nPoste visé : ${p.title||"(non renseigné)"}\nLocalisation : ${p.location||"-"}\nContrat recherché : ${p.contract||"indifférent"}\n\nCOMPÉTENCES DÉCLARÉES :\n${skills||"(aucune)"}\n\nCV :\n${(p.cvText||"(aucun CV importé)").slice(0,12000)}`;
+}
+$("#btn-analyse").addEventListener("click",async()=>{
+  const btn=$("#btn-analyse"),st=$("#analyse-status"),text=$("#o-text").value.trim(),url=$("#o-url").value.trim();
+  if(text.length<80){st.textContent="Colle le texte complet de l'offre (au moins quelques lignes).";return}
+  const p=state.profile;
+  if(!p.cvText&&!p.skills.length){$("#result").innerHTML='<div class="notice warn">Ton profil est vide : importe ton CV ou ajoute des compétences dans <a href="#profil" style="color:var(--amber)">Mon profil</a> pour obtenir un score fiable.</div>';return}
+  const h=hash(norm(text).slice(0,3000)),nu=normUrl(url);
+  const dup=realOffers().find(o=>o.hash===h||(nu&&o.urlKey===nu));
+  if(dup){$("#result").innerHTML=`<div class="notice warn">Tu as déjà analysé cette offre le ${fmtDate((dup.createdAt||"").slice(0,10))} : ${esc(dup.title)} chez ${esc(dup.company)}, score ${dup.score}, statut « ${ST[dup.status].label} ». <button class="btn small" data-open="${esc(dup.id)}">Ouvrir</button></div>`;return}
+  if(!sample){st.textContent="L'analyse par IA n'est pas disponible dans cette vue.";return}
+  btn.disabled=true;st.innerHTML='<span class="spinner"></span> Analyse en cours, environ 20 secondes…';$("#result").innerHTML="";
+  const prompt=`Tu es un recruteur expert et un moteur de matching CV / offre. Compare l'OFFRE au PROFIL du candidat.
+Règles :
+- Extrais les exigences de l'offre en séparant obligatoires et souhaitées.
+- Pour chaque exigence, regarde si le profil la couvre (CV + compétences déclarées avec leur niveau 1-4). Considère les synonymes (JS = JavaScript, PO = Product Owner).
+- "covered" : couvert au bon niveau ; "partial" : présent mais niveau ou expérience inférieur à l'attendu ; "missing" : absent du profil.
+- Score 0-100 : 60 % couverture des obligatoires, 20 % souhaitées, 20 % séniorité / contrat / localisation. Une exigence obligatoire absente pèse lourd.
+- Sois honnête : n'invente rien sur le candidat.
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, de la forme :
+{"title":"intitulé du poste","company":"entreprise ou vide","location":"lieu ou vide","contract":"type de contrat ou vide","seniority":"niveau attendu","mustHave":["..."],"niceToHave":["..."],"covered":["..."],"partial":["..."],"missing":["..."],"score":0,"summary":"2 phrases en français : verdict et principal écart"}
+
+=== PROFIL ===
+${profileSummary()}
+
+=== OFFRE ===
+${text.slice(0,15000)}`;
+  try{
+    const r=await sample.json(prompt,{modelTier:"default"});
+    const sc=Math.max(0,Math.min(100,Math.round(Number(r.score)||0)));
+    const o={id:uid(),createdAt:new Date().toISOString(),url,urlKey:nu,hash:h,text,
+      title:r.title||"Offre sans titre",company:r.company||"",location:r.location||"",contract:r.contract||"",seniority:r.seniority||"",
+      mustHave:r.mustHave||[],niceToHave:r.niceToHave||[],covered:r.covered||[],partial:r.partial||[],missing:r.missing||[],
+      score:sc,summary:r.summary||"",status:sc>=50?"todo":"nomatch",milestones:[]};
+    const dup2=realOffers().find(x=>norm(x.title)===norm(o.title)&&o.company&&norm(x.company)===norm(o.company));
+    state.offers.unshift(o);saveOffer(o);renderAll();showResult(o,dup2);
+    st.textContent="Offre ajoutée au tableau de bord dans « "+ST[o.status].label+" ».";
+    $("#o-text").value="";$("#o-url").value="";$("#o-file").value="";
+  }catch(e){
+    if(e&&e.code==="not_granted"){st.textContent="Autorise l'accès à Claude pour lancer l'analyse.";}
+    else if(e&&e.code==="rate_limited"){st.textContent="Trop de demandes d'un coup. Réessaie dans une minute.";}
+    else st.textContent="L'analyse a échoué ("+((e&&e.message)||"erreur")+"). Réessaie.";
+  }finally{btn.disabled=false}
+});
+function showResult(o,dup){
+  const verdict=o.score>=70?"Tu corresponds à cette offre":o.score>=50?"Correspondance partielle, à étudier":"Pas de correspondance";
+  $("#result").innerHTML=`<div class="panel">
+    ${dup?`<div class="notice warn" style="margin-bottom:12px">Une offre au même intitulé chez ${esc(dup.company)} existe déjà dans ton tableau de bord.</div>`:""}
+    <div class="row" style="gap:18px;align-items:flex-start">
+      <div class="score-ring" style="--p:${o.score};--ring:${scoreColor(o.score)}"><span class="num">${o.score}</span></div>
+      <div style="flex:1;min-width:220px;display:grid;gap:10px">
+        <div><h2>${esc(verdict)}</h2><div class="muted">${esc(o.title)}${o.company?" · "+esc(o.company):""}${o.location?" · "+esc(o.location):""}</div></div>
+        ${skillChips(o)}
+      </div></div>
+    <div class="row" style="margin-top:14px">
+      ${o.score>=50?`<button class="btn primary" id="r-cv">Générer mon CV ATS</button>`:""}
+      <button class="btn" data-open="${esc(o.id)}">Ouvrir la fiche</button>
+    </div><div id="r-cvout" style="margin-top:14px"></div></div>`;
+  const b=$("#r-cv");if(b)b.onclick=()=>generateCV(o,b,$("#r-cvout"));
+}
+
+/* ---------- CV ATS ---------- */
+async function generateCV(o,btn,out){
+  if(!sample){btn.textContent="IA indisponible dans cette vue";return}
+  if(!state.profile.cvText){btn.textContent="Importe d'abord ton CV dans Mon profil";return}
+  btn.disabled=true;const label=btn.textContent;btn.innerHTML='<span class="spinner"></span> Rédaction du CV…';
+  const prompt=`Rédige un CV optimisé ATS en français pour le poste ci-dessous, à partir UNIQUEMENT des informations du profil.
+Règles strictes :
+- N'invente AUCUNE expérience, entreprise, date, diplôme, certification ou compétence absente du profil. Tu peux reformuler, réordonner, et mettre en avant ce qui correspond.
+- Reprends les mots-clés exacts de l'offre quand le profil les justifie.
+- Format texte brut, une seule colonne, sans tableau ni emoji, titres de section en MAJUSCULES : en-tête (nom, poste visé, localisation, coordonnées si présentes dans le CV), PROFIL (3-4 lignes), COMPÉTENCES, EXPÉRIENCES PROFESSIONNELLES (poste, entreprise, dates, 3-5 puces avec "- "), FORMATION, CERTIFICATIONS, LANGUES.
+- Dates au format MM/AAAA.
+Réponds UNIQUEMENT en JSON : {"cv":"le CV complet en texte brut","keywords":["mots-clés de l'offre repris"],"gaps":["exigences de l'offre que le profil ne permet pas de justifier"]}
+
+=== PROFIL ===
+${profileSummary()}
+
+=== OFFRE (${o.title} – ${o.company}) ===
+${(o.text||"").slice(0,12000)}`;
+  try{
+    const r=await sample.json(prompt,{modelTier:"complex"});
+    o.cvText=String(r.cv||"").trim();o.cvKeywords=r.keywords||[];o.cvGaps=r.gaps||[];commit(o,false);
+    const html=`<div class="panel-h" style="margin-bottom:8px"><h3>CV ATS pour ${esc(o.company||o.title)}</h3><button class="btn small" id="cv-copy">Copier le CV</button></div>
+      ${o.cvKeywords.length?`<div class="small muted" style="margin-bottom:6px">Mots-clés repris</div><div class="chips" style="margin-bottom:10px">${o.cvKeywords.map(k=>`<span class="chip ok">${esc(k)}</span>`).join("")}</div>`:""}
+      ${o.cvGaps.length?`<div class="notice warn" style="margin-bottom:10px">Non mis dans le CV faute de preuve dans ton profil : ${o.cvGaps.map(esc).join(", ")}.</div>`:""}
+      <div class="cvbox">${esc(o.cvText)}</div>
+      <p class="small muted">Colle ce texte dans un document Word vierge, police Calibri ou Arial, et enregistre-le sous CV_${esc((state.profile.name||"Prenom_Nom").replace(/\s+/g,"_"))}_${esc((o.company||"Entreprise").replace(/\s+/g,"_"))}.docx.</p>`;
+    if(out){out.innerHTML=html;$("#cv-copy").onclick=e=>copyText(o.cvText,e.target);btn.remove()}else openDrawer(o.id);
+  }catch(e){btn.disabled=false;btn.textContent=e&&e.code==="rate_limited"?"Trop de demandes, réessaie dans une minute":"Échec de la génération, réessayer";return}
+}
+
+/* ---------- Profil ---------- */
+let activeDomain="produit";
+function renderProfile(){
+  const p=state.profile;
+  for(const [id,k] of [["#p-name","name"],["#p-title","title"],["#p-loc","location"],["#p-contract","contract"],["#p-cvtext","cvText"]]){const el=$(id);if(document.activeElement!==el)el.value=p[k]||""}
+  $("#cv-info").textContent=p.cvFile?"Importé : "+p.cvFile:"";
+  const used=new Set(p.skills.map(s=>s.domain));
+  $("#domains").innerHTML=DOMAINS.map(d=>`<button class="dom ${used.has(d.id)?"has":""}" data-dom="${d.id}" aria-pressed="${d.id===activeDomain}">${esc(d.name)}${used.has(d.id)?` <span class="num">· ${p.skills.filter(s=>s.domain===d.id).length}</span>`:""}</button>`).join("");
+  renderDomainDetail();renderAllSkills();
+}
+function lvlHtml(s){return `<div class="lvl" role="group" aria-label="Niveau">${[1,2,3,4].map(n=>`<button title="${LEVELS[n-1]}" data-lvl="${n}" data-sk="${s.id}" aria-pressed="${s.level===n}">${n}</button>`).join("")}</div>`}
+function renderDomainDetail(){
+  const d=DOMAINS.find(x=>x.id===activeDomain),p=state.profile;
+  const mine=p.skills.filter(s=>s.domain===d.id);
+  const have=new Set(mine.map(s=>norm(s.name)));
+  $("#domain-detail").innerHTML=`<h3 style="margin-bottom:10px">${esc(d.name)}</h3>
+   ${mine.length?`<table class="skilltable">${mine.map(s=>`<tr><td>${esc(s.name)}</td><td>${lvlHtml(s)}</td><td class="small muted">${LEVELS[s.level-1]}</td><td style="text-align:right"><button class="btn ghost small danger" data-rm="${s.id}" aria-label="Retirer ${esc(s.name)}">Retirer</button></td></tr>`).join("")}</table>`:'<div class="empty">Aucune compétence dans ce domaine. Choisis-en parmi les suggestions ou ajoute la tienne.</div>'}
+   <div class="small muted" style="margin:12px 0 6px">Suggestions de l'app</div>
+   <div class="sugg">${d.skills.filter(s=>!have.has(norm(s))).map(s=>`<button data-addsk="${esc(s)}">+ ${esc(s)}</button>`).join("")||'<span class="small muted">Toutes les suggestions sont ajoutées.</span>'}</div>
+   <form class="row" id="free-skill" style="margin-top:12px"><input type="text" id="free-name" placeholder="Autre compétence (saisie libre)" style="flex:1;min-width:200px" aria-label="Nouvelle compétence">
+    <select id="free-lvl" style="width:auto" aria-label="Niveau">${LEVELS.map((l,i)=>`<option value="${i+1}" ${i===1?"selected":""}>${i+1} · ${l}</option>`).join("")}</select><button class="btn purple">Ajouter</button></form>`;
+  $("#free-skill").onsubmit=e=>{e.preventDefault();const n=$("#free-name").value.trim();if(!n)return;addSkill(d.id,n,+$("#free-lvl").value)};
+}
+function renderAllSkills(){
+  const p=state.profile;$("#skill-count").textContent=p.skills.length+" compétence"+(p.skills.length>1?"s":"");
+  const rows=DOMAINS.filter(d=>p.skills.some(s=>s.domain===d.id)).map(d=>`<tr><td colspan="4" style="color:var(--purple-hi);font-weight:600;padding-top:14px">${esc(d.name)}</td></tr>`+
+    p.skills.filter(s=>s.domain===d.id).sort((a,b)=>b.level-a.level).map(s=>`<tr><td>${esc(s.name)}</td><td>${lvlHtml(s)}</td><td class="small muted">${LEVELS[s.level-1]}</td><td></td></tr>`).join("")).join("");
+  $("#all-skills").innerHTML=rows||'<tr><td class="empty">Ajoute tes premières compétences en choisissant un domaine ci-dessus.</td></tr>';
+}
+function addSkill(domain,name,level=2){
+  const p=state.profile;if(p.skills.some(s=>s.domain===domain&&norm(s.name)===norm(name)))return;
+  p.skills.push({id:uid(),domain,name,level});saveProfile();renderProfile();
+}
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-dom],[data-addsk],[data-lvl],[data-rm]");if(!t)return;
+  if(t.dataset.dom){activeDomain=t.dataset.dom;renderProfile();return}
+  if(t.dataset.addsk){addSkill(activeDomain,t.dataset.addsk);return}
+  if(t.dataset.lvl){const s=state.profile.skills.find(x=>x.id===t.dataset.sk);if(s){s.level=+t.dataset.lvl;saveProfile();renderProfile()}return}
+  if(t.dataset.rm){state.profile.skills=state.profile.skills.filter(x=>x.id!==t.dataset.rm);saveProfile();renderProfile()}
+});
+for(const [id,k] of [["#p-name","name"],["#p-title","title"],["#p-loc","location"],["#p-contract","contract"],["#p-cvtext","cvText"]]){
+  $(id).addEventListener("input",e=>{state.profile[k]=e.target.value;saveProfile()});
+}
+$("#p-cv").addEventListener("change",async e=>{
+  const f=e.target.files[0];if(!f)return;$("#cv-info").innerHTML='<span class="spinner"></span> Lecture…';
+  try{const t=(await readFile(f)).trim();state.profile.cvText=t;state.profile.cvFile=f.name;saveProfile();renderProfile();
+    if(sample&&!state.profile.skills.length)suggestSkillsFromCV()}
+  catch(err){$("#cv-info").textContent="Impossible de lire ce fichier ("+err.message+"). Colle le texte de ton CV."}
+});
+async function suggestSkillsFromCV(){
+  $("#cv-info").innerHTML='<span class="spinner"></span> Repérage de tes compétences dans le CV…';
+  const ids=DOMAINS.map(d=>d.id+" = "+d.name).join("\n");
+  try{
+    const r=await sample.json(`À partir du CV ci-dessous, liste les compétences réellement présentes (max 30), chacune rattachée à un domaine et avec un niveau estimé 1-4 (1 notions, 2 intermédiaire, 3 avancé, 4 expert) d'après l'expérience décrite. N'invente rien.
+Domaines possibles (utilise l'identifiant avant le =) :
+${ids}
+Réponds UNIQUEMENT en JSON : {"skills":[{"domain":"id","name":"compétence","level":2}]}
+
+CV :
+${state.profile.cvText.slice(0,12000)}`,{modelTier:"default"});
+    const valid=new Set(DOMAINS.map(d=>d.id));
+    for(const s of (r.skills||[])){if(valid.has(s.domain)&&s.name)state.profile.skills.push({id:uid(),domain:s.domain,name:String(s.name),level:Math.min(4,Math.max(1,+s.level||2))})}
+    const first=state.profile.skills[0];if(first)activeDomain=first.domain;
+    saveProfile();renderProfile();$("#cv-info").textContent="Importé : "+state.profile.cvFile+". Compétences pré-remplies, vérifie les niveaux.";
+  }catch{ $("#cv-info").textContent="Importé : "+state.profile.cvFile }
+}
+
+/* ---------- Agenda ---------- */
+let calMonth=new Date();calMonth.setDate(1);
+function allMilestones(){return shownOffers().flatMap(o=>(o.milestones||[]).map(m=>({...m,offer:o})))}
+function renderAgenda(){
+  const ms=allMilestones().sort((a,b)=>(a.date+(a.time||"")).localeCompare(b.date+(b.time||"")));
+  const up=ms.filter(m=>m.date>=todayISO());
+  const itemHtml=m=>`<button class="it" data-open="${esc(m.offer.id)}"><span class="date">${fmtShort(m.date)}<br><span class="small muted num">${esc(m.time||"")}</span></span>
+    <span><strong>${esc(m.type)}</strong> · ${esc(m.offer.title)} <span class="muted">· ${esc(m.offer.company)}</span><br>
+    <span class="small muted">${[m.person&&esc(m.person)+(m.role?" ("+esc(m.role)+")":""),m.mode&&esc(m.mode)].filter(Boolean).join(" · ")}${m.offer.demo?' · <span style="color:var(--amber)">Exemple</span>':""}</span></span></button>`;
+  const none='<div class="empty">Aucun entretien à venir. Ajoute-le depuis la fiche de la candidature.</div>';
+  $("#agenda-list").innerHTML=up.map(itemHtml).join("")||none;
+  $("#home-next").innerHTML=up.slice(0,3).map(itemHtml).join("")||none;
+  const y=calMonth.getFullYear(),mo=calMonth.getMonth();
+  $("#cal-title").textContent=calMonth.toLocaleDateString("fr-FR",{month:"long",year:"numeric"}).replace(/^./,c=>c.toUpperCase());
+  const start=new Date(y,mo,1);const offset=(start.getDay()+6)%7;start.setDate(1-offset);
+  let html=["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].map(d=>`<div class="dh">${d}</div>`).join("");
+  for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);
+    const iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const evs=ms.filter(m=>m.date===iso);
+    html+=`<div class="day ${d.getMonth()!==mo?"out":""} ${iso===todayISO()?"today":""}"><span class="num">${d.getDate()}</span>${evs.map(m=>`<button class="ev" data-open="${esc(m.offer.id)}" title="${esc(m.type+" – "+m.offer.company)}">${esc((m.time||"")+" "+m.offer.company.replace(/^Exemple : /,""))}</button>`).join("")}</div>`}
+  $("#cal").innerHTML=html;
+}
+$("#cal-prev").onclick=()=>{calMonth.setMonth(calMonth.getMonth()-1);renderAgenda()};
+$("#cal-next").onclick=()=>{calMonth.setMonth(calMonth.getMonth()+1);renderAgenda()};
+
+init();
+</script>
+</body>
+</html>
